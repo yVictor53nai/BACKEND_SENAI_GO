@@ -2,13 +2,12 @@ const pool = require('../database/db');
 
 async function salvarVisita(usuarioId, salaId, pontos) {
   try {
-    // Convertien dagiti ID iti husto a bilang (INTEGER)
     const uId = parseInt(usuarioId, 10);
     const sId = parseInt(salaId, 10);
     const pts = parseInt(pontos, 10) || 0;
 
     if (isNaN(uId) || isNaN(sId)) {
-      throw new Error(`Invalid inputs: usuarioId=${usuarioId}, salaId=${salaId}`);
+      throw new Error(`Identificadores inválidos: usuarioId=${usuarioId}, salaId=${salaId}`);
     }
 
     const query = `
@@ -20,7 +19,7 @@ async function salvarVisita(usuarioId, salaId, pontos) {
     const resultado = await pool.query(query, [uId, sId, pts]);
     return resultado.rows[0];
   } catch (err) {
-    console.error('DATABASE ERROR [salvarVisita]:', err.message);
+    console.error("DATABASE ERROR [salvarVisita]:", err.message);
     throw err;
   }
 }
@@ -45,7 +44,7 @@ async function listarVisitas() {
     const resultado = await pool.query(query);
     return resultado.rows;
   } catch (err) {
-    console.error('DATABASE ERROR [listarVisitas]:', err.message);
+    console.error("DATABASE ERROR [listarVisitas]:", err.message);
     throw err;
   }
 }

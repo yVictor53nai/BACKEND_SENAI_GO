@@ -5,7 +5,7 @@ async function registrarVisitas(req, res) {
   try {
     // Extrai o ID do usuário autenticado (suporta id, userId ou id_usuario)
     const usuarioId = req.usuario?.id || req.usuario?.userId || req.usuario?.id_usuario;
-    const rawSalaId = req.body.salaId ?? req.body.id;
+    const rawSalaId = req.body?.salaId ?? req.body?.id;
 
     // 1. Validação de presença de dados
     if (!usuarioId || !rawSalaId) {
@@ -58,7 +58,6 @@ async function registrarVisitas(req, res) {
     });
   } catch (erro) {
     console.error("[ERRO REGISTRAR VISITA]:", erro);
-    // Exibe o erro do banco diretamente na mensagem de resposta
     return res.status(500).json({ 
       message: `Erro do Servidor: ${erro.message || 'Falha ao salvar visita'}` 
     });
