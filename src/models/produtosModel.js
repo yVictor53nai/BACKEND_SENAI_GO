@@ -1,69 +1,63 @@
-const listaProdutos = [
-  { id: 1, nome: "Caneca SENAI", imagem: "☕", pontos: 15, estoque: 20 },
-  { id: 2, nome: "Camisa SENAI", imagem: "👕", pontos: 30, estoque: 15 },
-  { id: 3, nome: "Chaveiro Exclusivo", imagem: "🔑", pontos: 10, estoque: 30 },
-  { id: 4, nome: "Garrafa Personalizada", imagem: "🧴", pontos: 25, estoque: 20 },
-  { id: 5, nome: "Mochila Tech SENAI", imagem: "🎒", pontos: 50, estoque: 10 },
-  { id: 6, nome: "Fone Bluetooth", imagem: "🎧", pontos: 80, estoque: 5 }
-]
-let id = listaProdutos.length + 1
+const pool = require('./database/db')
 
-function listarProdutos() {
-  return listaProdutos
+async function listarProdutos() {
+  const resultado = await pool.query(`SELECT * FROM produtos ORDER BY id;`)
+  return resultado.rows
 }
 
-function buscarProdutoPorId(produtoId) {
-  return listaProdutos.find(p => p.id === produtoId) || null
+async function buscarProdutoPorId(produtoId) {
+  const resultado = await pool.query(`SELECT * FROM produtos WHERE id = $1;`, [produtoId])
+  return resultado.rows[0] || null
 }
 
-function cadastrarProduto(dadosProduto) {
-  const produto = {
-    id: id++,
-    nome: dadosProduto.nome,
-    imagem: dadosProduto.imagem || "🎁",
-    pontos: dadosProduto.pontos,
-    estoque: dadosProduto.estoque
-  }
-  listaProdutos.push(produto)
-
-  return produto
+async function cadastrarProduto(dadosProduto) {
+  const query = `
+    INSERT INTO produtos (nome, imagem, pontos, estoque) 
+    VALUES ($1, $2, $3, $4) 
+    RETURNING *;
+  `
+  const values = [
+    dadosProduto.nome,
+    dadosProduto.imagem || '🎁',
+    dadosProduto.pontos,
+    dadosProduto.estoque
+  ]
+  const resultado = await pool.query(query, values)
+  return resultado.rows[0]
 }
 
-function atualizarProduto(produtoId, dadosProduto) {
-  const produto = buscarProdutoPorId(produtoId)
-
-  if (!produto) {
-    return null
-  }
-
-  produto.nome = dadosProduto.nome
-  produto.imagem = dadosProduto.imagem || "🎁"
-  produto.pontos = dadosProduto.pontos
-  produto.estoque = dadosProduto.estoque
-
-  return produto
+async function atualizarProduto(produtoId, dadosProduto) {
+  const query = `
+    UPDATE produtos 
+    SET nome = $1, imagem = $2, pontos = $3, estoque = $4 
+    WHERE id = $5 
+    RETURNING *;
+  `
+  const values = [
+    dadosProduto.nome,
+    dadosProduto.imagem || '🎁',
+    dadosProduto.pontos,
+    dadosProduto.estoque,
+    produtoId
+  ]
+  const resultado = await pool.query(query, values)
+  return resultado.rows[0] || null
 }
 
-function removerProduto(produtoId) {
-  const posicao = listaProdutos.findIndex(p => p.id === produtoId)
-
-  if (posicao === -1) {
-    return null
-  }
-
-  return listaProdutos.splice(posicao, 1)[0]
+async function removerProduto(produtoId) {
+  const resultado = await pool.query(`DELETE FROM produtos WHERE id = $1 RETURNING *;`, [produtoId])
+  return resultado.rows[0] || null
 }
 
-function baixarEstoque(produtoId) {
-  const produto = buscarProdutoPorId(produtoId)
-
-  if (!produto || produto.estoque <= 0) {
-    return null
-  }
-
-  produto.estoque -= 1
-
-  return produto
+async function baixarEstoque(produtoId) {
+  const query = `
+    UPDATE produtos 
+    SET estoque = estoque - 1 
+    WHERE id = $1 AND estoque > 0 
+    RETURNING *;
+  `
+  const resultado = await pool.query(query, [produtoId])
+  return resultado.rows[0] || null
 }
 
 module.exports = { listarProdutos, buscarProdutoPorId, cadastrarProduto, atualizarProduto, removerProduto, baixarEstoque }

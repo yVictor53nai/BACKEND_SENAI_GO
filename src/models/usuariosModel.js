@@ -1,33 +1,35 @@
-const listaUsuarios = []
-let id = 1
+const pool = require('./database/db')
 
-function cadastrarUsuario(dadosUsuario){
-const usuario = {
-    id: id ++,
-cpf: dadosUsuario.cpf,
-nome: dadosUsuario.nome,
-email: dadosUsuario.email,
-senha: dadosUsuario.senha
-}
-listaUsuarios.push(usuario)
-
-return usuario
-
+async function cadastrarUsuario(dadosUsuario) {
+  const query = `
+    INSERT INTO usuarios (cpf, nome, email, senha) 
+    VALUES ($1, $2, $3, $4) 
+    RETURNING id, cpf, nome, email, criado_em;
+  `
+  const values = [dadosUsuario.cpf, dadosUsuario.nome, dadosUsuario.email, dadosUsuario.senha]
+  
+  const resultado = await pool.query(query, values)
+  return resultado.rows[0]
 }
 
-function login (email, senha){
-    const logarUsuario = listaUsuarios.find(u => u.email === email &&  u.senha === senha)
-    
-    if(!logarUsuario){
-        return null
-    }
-
-return logarUsuario
+async function login(email, senha) {
+  const query = `
+    SELECT id, cpf, nome, email, criado_em 
+    FROM usuarios 
+    WHERE email = $1 AND senha = $2;
+  `
+  const resultado = await pool.query(query, [email, senha])
+  return resultado.rows[0] || null
 }
 
-function buscarPorCPF(cpf) {
-    return listaUsuarios.find(usuario => usuario.cpf === cpf);
+async function buscarPorCPF(cpf) {
+  const query = `
+    SELECT id, cpf, nome, email, criado_em 
+    FROM usuarios 
+    WHERE cpf = $1;
+  `
+  const resultado = await pool.query(query, [cpf])
+  return resultado.rows[0] || null
 }
 
-
-module.exports = {cadastrarUsuario, login, buscarPorCPF}
+module.exports = { cadastrarUsuario, login, buscarPorCPF }

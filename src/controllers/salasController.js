@@ -36,7 +36,7 @@ async function removerSala(req, res) {
 
   const visitas = await visitasModel.listarVisitas()
 
-  if (visitas.some(v => v.salaId === salaId)) {
+  if (visitas.some(v => Number(v.sala_id) === salaId)) {
     return res.status(409).json({ erro: "Esta sala já possui visitas e não pode ser removida. Desative-a pela edição." })
   }
 

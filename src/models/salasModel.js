@@ -1,60 +1,62 @@
-const listaSalas = [
-  { salaId: 1, sala: "Robótica", pontos: 5, icone: "bot", descricao: "Laboratório de Automação e Braços Robóticos.", ativa: true },
-  { salaId: 2, sala: "Refrigeração", pontos: 10, icone: "snowflake", descricao: "Oficina Prática de Sistemas Térmicos e Climatização.", ativa: true }
-]
-let id = listaSalas.length + 1
+const pool = require('./database/db')
 
-
-function listarSalas() {
-  return listaSalas.filter(s => s.ativa)
+async function listarSalas() {
+  const query = `SELECT * FROM salas WHERE ativa = TRUE ORDER BY sala_id;`
+  const resultado = await pool.query(query)
+  return resultado.rows
 }
 
-function listarTodasSalas() {
-  return listaSalas
+async function listarTodasSalas() {
+  const query = `SELECT * FROM salas ORDER BY sala_id;`
+  const resultado = await pool.query(query)
+  return resultado.rows
 }
 
-function buscarSalaPorId(salaId) {
-  return listaSalas.find(s => s.salaId === salaId) || null
+async function buscarSalaPorId(salaId) {
+  const query = `SELECT * FROM salas WHERE sala_id = $1;`
+  const resultado = await pool.query(query, [salaId])
+  return resultado.rows[0] || null
 }
 
-function cadastrarSala(dadosSala) {
-  const sala = {
-    salaId: id++,
-    sala: dadosSala.sala,
-    pontos: dadosSala.pontos,
-    icone: dadosSala.icone || "map-pin",
-    descricao: dadosSala.descricao || "",
-    ativa: true
-  }
-  listaSalas.push(sala)
-
-  return sala
+async function cadastrarSala(dadosSala) {
+  const query = `
+    INSERT INTO salas (sala, pontos, icone, descricao, ativa) 
+    VALUES ($1, $2, $3, $4, TRUE) 
+    RETURNING *;
+  `
+  const values = [
+    dadosSala.sala, 
+    dadosSala.pontos, 
+    dadosSala.icone || 'map-pin', 
+    dadosSala.descricao || ''
+  ]
+  const resultado = await pool.query(query, values)
+  return resultado.rows[0]
 }
 
-function atualizarSala(salaId, dadosSala) {
-  const sala = buscarSalaPorId(salaId)
-
-  if (!sala) {
-    return null
-  }
-
-  sala.sala = dadosSala.sala
-  sala.pontos = dadosSala.pontos
-  sala.icone = dadosSala.icone || "map-pin"
-  sala.descricao = dadosSala.descricao || ""
-  sala.ativa = dadosSala.ativa === undefined ? sala.ativa : dadosSala.ativa
-
-  return sala
+async function atualizarSala(salaId, dadosSala) {
+  const query = `
+    UPDATE salas 
+    SET sala = $1, pontos = $2, icone = $3, descricao = $4, ativa = $5 
+    WHERE sala_id = $6 
+    RETURNING *;
+  `
+  const values = [
+    dadosSala.sala,
+    dadosSala.pontos,
+    dadosSala.icone || 'map-pin',
+    dadosSala.descricao || '',
+    dadosSala.ativa !== undefined ? dadosSala.ativa : true,
+    salaId
+  ]
+  const resultado = await pool.query(query, values)
+  return resultado.rows[0] || null
 }
 
-function removerSala(salaId) {
-  const posicao = listaSalas.findIndex(s => s.salaId === salaId)
-
-  if (posicao === -1) {
-    return null
-  }
-
-  return listaSalas.splice(posicao, 1)[0]
+async function removerSala(salaId) {
+  const query = `DELETE FROM salas WHERE sala_id = $1 RETURNING *;`
+  const resultado = await pool.query(query, [salaId])
+  return resultado.rows[0] || null
 }
 
 module.exports = { listarSalas, listarTodasSalas, buscarSalaPorId, cadastrarSala, atualizarSala, removerSala }
