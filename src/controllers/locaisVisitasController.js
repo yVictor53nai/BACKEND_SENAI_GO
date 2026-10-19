@@ -1,9 +1,8 @@
 const visitasModel = require("../models/locaisVisitasModel");
-const salasModel = require("../models/salasModel");
+const pool = require("../database/db");
 
 async function registrarVisitas(req, res) {
   try {
-    // 1. Garante a extração do ID do utilizador autenticado (suporta id, userId ou id_usuario)
     const usuarioId = req.usuario?.id || req.usuario?.userId || req.usuario?.id_usuario;
     const rawSalaId = req.body.salaId ?? req.body.id;
 
@@ -11,37 +10,44 @@ async function registrarVisitas(req, res) {
       return res.status(400).json({ message: "Dados incompletos para registrar a visita." });
     }
 
-    // 2. Converte para número se for numérico, senão mantém como string
-    const salaId = !isNaN(Number(rawSalaId)) ? Number(rawSalaId) : String(rawSalaId);
+    // 1. Busca a sala real no PostgreSQL (procura por sala_id OU pelo nome/código '3213')
+    const querySala = `
+      SELECT sala_id, sala, pontos, ativa 
+      FROM salas 
+      WHERE sala_id = $1 OR LOWER(sala) = LOWER($2) 
+      LIMIT 1;
+    `;
+    
+    // Se for número usa o valor, se for texto passa 0 no parâmetro numérico para não quebrar a query
+    const numId = !isNaN(Number(rawSalaId)) ? Number(rawSalaId) : 0;
+    const resSala = await pool.query(querySala, [numId, String(rawSalaId)]);
+    const salaCadastrada = resSala.rows[0];
 
-    // 3. Busca a sala no banco de dados (tenta busca por número ou por identificador textual)
-    let salaCadastrada = null;
-    if (typeof salasModel.buscarSalaPorId === 'function') {
-      salaCadastrada = await salasModel.buscarSalaPorId(salaId);
+    if (!salaCadastrada) {
+      return res.status(404).json({ message: "Sala não encontrada no banco de dados." });
     }
 
-    // Fallback: Se a busca por ID direto não encontrar, tenta listar e encontrar pelo nome/slug
-    if (!salaCadastrada && typeof salasModel.listarSalas === 'function') {
-      const salas = await salasModel.listarSalas();
-      salaCadastrada = salas.find(
-        (s) =>
-          String(s.sala_id ?? s.id ?? s.salaId) === String(salaId) ||
-          String(s.sala ?? s.nome).toLowerCase() === String(salaId).toLowerCase()
-      );
+    if (salaCadastrada.ativa !== undefined && !salaCadastrada.ativa) {
+      return res.status(400).json({ message: "Esta sala está desativada." });
     }
 
-    if (!salaCadastrada || (salaCadastrada.ativa !== undefined && !salaCadastrada.ativa)) {
-      return res.status(404).json({ message: "Sala não encontrada ou desativada." });
+    // 2. Verifica se o aluno JÁ visitou esta sala para evitar o Erro 500 de violação UNIQUE
+    const queryCheck = `
+      SELECT id FROM historico_visitas 
+      WHERE usuario_id = $1 AND sala_id = $2 
+      LIMIT 1;
+    `;
+    const checkVisita = await pool.query(queryCheck, [usuarioId, salaCadastrada.sala_id]);
+
+    if (checkVisita.rows.length > 0) {
+      return res.status(409).json({ message: "Você já visitou esta área." });
     }
 
-    const idDaSalaNoBanco = salaCadastrada.sala_id ?? salaCadastrada.id ?? salaCadastrada.salaId;
-    const pontosDaSala = salaCadastrada.pontos ?? 5;
-
-    // 4. Salva a visita na base de dados
+    // 3. Grava a visita usando o ID numérico real da tabela salas
     const localDeVisita = await visitasModel.salvarVisita(
       usuarioId,
-      idDaSalaNoBanco,
-      pontosDaSala
+      salaCadastrada.sala_id,
+      salaCadastrada.pontos || 5
     );
 
     return res.status(201).json({
@@ -49,8 +55,11 @@ async function registrarVisitas(req, res) {
       localDeVisita,
     });
   } catch (erro) {
-    console.error("[ERRO NO SERVIDOR - registrarVisita]:", erro);
-    return res.status(500).json({ message: "Erro interno no servidor ao registrar visita.", detalhe: erro.message });
+    console.error("[ERRO CRÍTICO NO BACKEND]:", erro);
+    return res.status(500).json({ 
+      message: "Erro interno no servidor ao registrar visita.", 
+      detalhe: erro.message 
+    });
   }
 }
 
@@ -59,7 +68,7 @@ async function listarVisitas(req, res) {
     const todasVisitas = await visitasModel.listarVisitas();
     return res.json(todasVisitas);
   } catch (erro) {
-    console.error("[ERRO NO SERVIDOR - listarVisitas]:", erro);
+    console.error("[ERRO LISTAR VISITAS]:", erro);
     return res.status(500).json({ message: "Erro ao listar visitas." });
   }
 }
