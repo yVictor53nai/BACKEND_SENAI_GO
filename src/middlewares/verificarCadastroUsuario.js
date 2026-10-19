@@ -1,10 +1,10 @@
 const usuariosModel = require("../models/usuariosModel");
 
-function verificarUsuarioExistente(req, res, next) {
+async function verificarUsuarioExistente(req, res, next) {
     const { cpf } = req.body;
 
-    const usuario = usuariosModel.buscarPorCPF(cpf);
-
+    const usuario = await usuariosModel.buscarPorCPF(cpf);
+    console.log(usuario)
     if (usuario) {
         return res.status(409).json({
             erro: "Já existe um usuário cadastrado com este CPF."

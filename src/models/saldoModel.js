@@ -1,4 +1,4 @@
-const pool = require('./database/db')
+const pool = require('../database/db')
 
 async function calcularSaldo(usuarioId) {
   const query = `

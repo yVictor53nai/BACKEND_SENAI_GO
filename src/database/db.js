@@ -1,11 +1,14 @@
-const { Pool } = require('pg')
+require('dotenv').config();
+const { Pool } = require("pg");
+
+// Log para confirmar no terminal qual URL está sendo lida
+console.log("--> URL do Banco:", process.env.DATABASE_URL);
 
 const pool = new Pool({
-  user: 'neondb_owner',
-  host: 'ep-still-breeze-b6te824e-pooler.c-2.sa-east-1.aws.neon.tech',
-  database: 'neondb',
-  password: 'npg_oZKvbaVp6I5e',
-  port: 5432,
-})
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false, // Obrigatório para aceitar a conexão do Neon
+  },
+});
 
-module.exports = pool
+module.exports = pool;

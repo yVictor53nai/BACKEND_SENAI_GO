@@ -1,4 +1,4 @@
-const pool = require('./database/db')
+const pool = require('../database/db')
 
 async function salvarResgate(usuarioId, produto) {
   const query = `

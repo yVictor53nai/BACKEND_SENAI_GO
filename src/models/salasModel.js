@@ -1,4 +1,4 @@
-const pool = require('./database/db')
+const pool = require('../database/db')
 
 async function listarSalas() {
   const query = `SELECT * FROM salas WHERE ativa = TRUE ORDER BY sala_id;`
