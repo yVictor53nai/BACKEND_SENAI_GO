@@ -1,43 +1,42 @@
 const visitasModel = require("../models/locaisVisitasModel");
+const salasModel = require("../models/salasModel");
 
 async function verificarVisita(req, res, next) {
   try {
-    // 1. Extrai o ID do utilizador autenticado
     const usuarioId = req.usuario?.id || req.usuario?.userId || req.usuario?.id_usuario;
-    // 2. Extrai o ID da sala recebido no corpo da requisição
-    const rawSalaId = req.body?.salaId ?? req.body?.id;
+    let rawSalaId = req.body?.salaId ?? req.body?.id ?? req.body?.sala_id;
 
     if (!usuarioId || !rawSalaId) {
       return res.status(400).json({ message: "Dados incompletos para verificar a visita." });
     }
 
-    // 3. Aguarda a lista de visitas da base de dados (obrigatorio uso de await)
-    const todasVisitas = await visitasModel.listarVisitas();
-
-    if (!Array.isArray(todasVisitas)) {
-      return next(); // Se a lista falhar, deixa avançar para o controller tratar
-    }
-
-    // 4. Procura se este utilizador já visitou esta sala (compara como String para evitar erros de tipos)
-    const registrado = todasVisitas.find((v) => {
-      const vUserId = v.usuario_id ?? v.userId ?? v.id_usuario ?? v.id;
-      const vSalaId = v.sala_id ?? v.salaId ?? v.id;
-
-      return (
-        String(vUserId) === String(usuarioId) &&
-        String(vSalaId) === String(rawSalaId)
+    // 1. Tenta resolver a sala para pegar o ID correto do banco
+    let salaIdReal = rawSalaId;
+    if (typeof salasModel.listarSalas === 'function') {
+      const todasSalas = await salasModel.listarSalas();
+      const salaEncontrada = todasSalas.find(
+        (s) =>
+          String(s.sala_id ?? s.id ?? s.salaId) === String(rawSalaId) ||
+          String(s.sala ?? s.nome).toLowerCase() === String(rawSalaId).toLowerCase()
       );
-    });
-
-    if (registrado) {
-      return res.status(409).json({ message: "O local já foi visitado!" });
+      if (salaEncontrada) {
+        salaIdReal = salaEncontrada.sala_id ?? salaEncontrada.id ?? salaEncontrada.salaId;
+      }
     }
 
-    // Se não foi visitado, avança para o controller registar
+    // 2. Verifica se o usuário já visitou este ID
+    const jaVisitou = await visitasModel.buscarVisitaPorUsuarioESala(usuarioId, salaIdReal);
+
+    if (jaVisitou) {
+      return res.status(400).json({ message: "Esta sala já foi visitada por você!" });
+    }
+
+    // Passa a sala já resolvida no req.body para o controller
+    req.body.salaId = salaIdReal;
+
     next();
   } catch (erro) {
     console.error("[ERRO NO MIDDLEWARE VERIFICAR VISITA]:", erro);
-    // Se ocorrer um erro interno na busca, passa ao proximo middleware/controller em vez de derrubar com erro 500
     next();
   }
 }
