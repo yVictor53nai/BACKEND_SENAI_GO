@@ -9,10 +9,10 @@ async function listarSalas(req, res) {
       return res.json([]);
     }
 
-    // Retorna apenas salas que não estejam explicitamente desativadas
+    // Retorna apenas salas que não estejam marcadas explicitamente como desativadas
     const salasAtivas = todasSalas.filter((s) => {
-      const flagAtiva = s.ativa ?? s.ativo ?? s.is_active ?? s.status ?? true;
-      return flagAtiva !== false && flagAtiva !== 0 && String(flagAtiva).toLowerCase() !== 'false';
+      const status = s.ativa ?? s.ativo ?? s.is_active ?? s.status;
+      return status !== false && status !== 0 && String(status).toLowerCase() !== 'false';
     });
 
     return res.json(salasAtivas);
