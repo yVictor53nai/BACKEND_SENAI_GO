@@ -3,8 +3,14 @@ const visitasModel = require("../models/locaisVisitasModel");
 
 async function listarSalas(req, res) {
   try {
-    const salas = await salasModel.listarSalas();
-    return res.json(salas);
+    const todasSalas = await salasModel.listarSalas();
+    
+    // FILTRO: Retorna apenas salas ativas para a rota utilizada pelos alunos
+    const salasAtivas = Array.isArray(todasSalas)
+      ? todasSalas.filter((s) => s.ativa !== false && s.ativa !== 0 && s.ativa !== 'false')
+      : [];
+
+    return res.json(salasAtivas);
   } catch (erro) {
     console.error("[ERRO LISTAR SALAS]:", erro);
     return res.status(500).json({ erro: "Erro ao listar salas ativas." });
