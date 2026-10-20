@@ -3,26 +3,24 @@ const salasModel = require("../models/salasModel");
 
 async function registrarVisitas(req, res) {
   try {
-    console.log("[DEBUG REGISTRAR VISITA] req.usuario:", req.usuario);
-    console.log("[DEBUG REGISTRAR VISITA] req.body:", req.body);
-
     const usuarioId = req.usuario?.id || req.usuario?.userId || req.usuario?.id_usuario;
     let rawSalaId = req.body?.salaId ?? req.body?.id ?? req.body?.sala_id;
 
     if (!usuarioId) {
       return res.status(401).json({ 
-        message: "Sessão expirada ou utilizador não autenticado. Faça login novamente no telemóvel." 
+        message: "Sessão expirada. Faça login novamente no dispositivo." 
       });
     }
 
     if (!rawSalaId) {
       return res.status(400).json({ 
-        message: "QR Code inválido ou não reconhecido. Tente escanear novamente." 
+        message: "QR Code inválido ou não identificado." 
       });
     }
 
     const numSalaId = Number(rawSalaId);
 
+    // 1. Procura a sala na base de dados pelo ID ou pelo nome/slug extraído do QR Code
     let salaCadastrada = null;
     if (!isNaN(numSalaId) && typeof salasModel.buscarSalaPorId === 'function') {
       salaCadastrada = await salasModel.buscarSalaPorId(numSalaId);
@@ -39,24 +37,27 @@ async function registrarVisitas(req, res) {
 
     if (!salaCadastrada) {
       return res.status(404).json({ 
-        message: `A sala "${rawSalaId}" não foi encontrada no banco de dados.` 
+        message: `A sala "${rawSalaId}" não está cadastrada no sistema.` 
       });
     }
 
     const idDaSalaNoBanco = salaCadastrada.sala_id ?? salaCadastrada.id ?? salaCadastrada.salaId;
     const pontosDaSala = salaCadastrada.pontos ?? 5;
 
+    // 2. Verifica se a sala já foi visitada
     const jaVisitou = await visitasModel.buscarVisitaPorUsuarioESala(usuarioId, idDaSalaNoBanco);
     if (jaVisitou) {
       return res.status(400).json({ message: "Esta sala já foi visitada por você!" });
     }
 
+    // 3. Regista a nova visita
     const localDeVisita = await visitasModel.salvarVisita(
       usuarioId,
       idDaSalaNoBanco,
       pontosDaSala
     );
 
+    // 4. Retorna as salas visitadas pelo utilizador para atualizar o estado do FrontEnd
     const visitasDoUsuario = await visitasModel.listarSalasVisitadasPorUsuario(usuarioId);
 
     return res.status(201).json({
