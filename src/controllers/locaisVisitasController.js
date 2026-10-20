@@ -3,18 +3,26 @@ const salasModel = require("../models/salasModel");
 
 async function registrarVisitas(req, res) {
   try {
-    const usuarioId = req.usuario?.id || req.usuario?.userId || req.usuario?.id_usuario;
-    const rawSalaId = req.body?.salaId ?? req.body?.id ?? req.body?.sala_id;
+    console.log("[DEBUG REGISTRAR VISITA] req.usuario:", req.usuario);
+    console.log("[DEBUG REGISTRAR VISITA] req.body:", req.body);
 
-    if (!usuarioId || !rawSalaId) {
+    const usuarioId = req.usuario?.id || req.usuario?.userId || req.usuario?.id_usuario;
+    let rawSalaId = req.body?.salaId ?? req.body?.id ?? req.body?.sala_id;
+
+    if (!usuarioId) {
+      return res.status(401).json({ 
+        message: "Sessão expirada ou utilizador não autenticado. Faça login novamente no telemóvel." 
+      });
+    }
+
+    if (!rawSalaId) {
       return res.status(400).json({ 
-        message: `Dados inválidos! ID Usuário: ${usuarioId || 'ausente'}, ID Sala: ${rawSalaId || 'ausente'}` 
+        message: "QR Code inválido ou não reconhecido. Tente escanear novamente." 
       });
     }
 
     const numSalaId = Number(rawSalaId);
 
-    // Busca a sala no banco
     let salaCadastrada = null;
     if (!isNaN(numSalaId) && typeof salasModel.buscarSalaPorId === 'function') {
       salaCadastrada = await salasModel.buscarSalaPorId(numSalaId);
@@ -31,25 +39,24 @@ async function registrarVisitas(req, res) {
 
     if (!salaCadastrada) {
       return res.status(404).json({ 
-        message: `A sala "${rawSalaId}" não está cadastrada no banco de dados.` 
+        message: `A sala "${rawSalaId}" não foi encontrada no banco de dados.` 
       });
-    }
-
-    if (salaCadastrada.ativa !== undefined && !salaCadastrada.ativa) {
-      return res.status(400).json({ message: "Esta sala está desativada no momento." });
     }
 
     const idDaSalaNoBanco = salaCadastrada.sala_id ?? salaCadastrada.id ?? salaCadastrada.salaId;
     const pontosDaSala = salaCadastrada.pontos ?? 5;
 
-    // Salva a visita na base de dados
+    const jaVisitou = await visitasModel.buscarVisitaPorUsuarioESala(usuarioId, idDaSalaNoBanco);
+    if (jaVisitou) {
+      return res.status(400).json({ message: "Esta sala já foi visitada por você!" });
+    }
+
     const localDeVisita = await visitasModel.salvarVisita(
       usuarioId,
       idDaSalaNoBanco,
       pontosDaSala
     );
 
-    // Retorna a lista atualizada de IDs visitados
     const visitasDoUsuario = await visitasModel.listarSalasVisitadasPorUsuario(usuarioId);
 
     return res.status(201).json({
@@ -60,7 +67,7 @@ async function registrarVisitas(req, res) {
   } catch (erro) {
     console.error("[ERRO REGISTRAR VISITA]:", erro);
     return res.status(500).json({ 
-      message: `Erro do Servidor: ${erro.message || 'Falha ao salvar visita'}` 
+      message: `Erro interno no servidor: ${erro.message}` 
     });
   }
 }

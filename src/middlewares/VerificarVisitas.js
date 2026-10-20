@@ -6,11 +6,11 @@ async function verificarVisita(req, res, next) {
     const usuarioId = req.usuario?.id || req.usuario?.userId || req.usuario?.id_usuario;
     let rawSalaId = req.body?.salaId ?? req.body?.id ?? req.body?.sala_id;
 
+    // Se o ID do utilizador ou da sala não vierem, deixa passar para o controller responder com log limpo
     if (!usuarioId || !rawSalaId) {
-      return res.status(400).json({ message: "Dados incompletos para verificar a visita." });
+      return next();
     }
 
-    // 1. Tenta resolver a sala para pegar o ID correto do banco
     let salaIdReal = rawSalaId;
     if (typeof salasModel.listarSalas === 'function') {
       const todasSalas = await salasModel.listarSalas();
@@ -24,16 +24,13 @@ async function verificarVisita(req, res, next) {
       }
     }
 
-    // 2. Verifica se o usuário já visitou este ID
     const jaVisitou = await visitasModel.buscarVisitaPorUsuarioESala(usuarioId, salaIdReal);
 
     if (jaVisitou) {
       return res.status(400).json({ message: "Esta sala já foi visitada por você!" });
     }
 
-    // Passa a sala já resolvida no req.body para o controller
     req.body.salaId = salaIdReal;
-
     next();
   } catch (erro) {
     console.error("[ERRO NO MIDDLEWARE VERIFICAR VISITA]:", erro);
