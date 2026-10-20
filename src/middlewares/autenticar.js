@@ -1,7 +1,9 @@
 const jwt = require("jsonwebtoken")
+const { promisify } = require("util")
 
-function autenticar(req, res, next) {
+const verifyAsync = promisify(jwt.verify)
 
+async function autenticar(req, res, next) {
     const authHeaders = req.headers["authorization"]
 
     if (!authHeaders) {
@@ -19,11 +21,12 @@ function autenticar(req, res, next) {
     }
 
     try {
-        const payload = jwt.verify(token, process.env.JWT_SECRET)
+        // Agora executado de forma assíncrona sem bloquear a thread principal
+        const payload = await verifyAsync(token, process.env.JWT_SECRET)
 
         req.usuario = payload
 
-        next()
+        return next()
 
     } catch (erro) {
 
@@ -39,4 +42,4 @@ function autenticar(req, res, next) {
     }
 }
 
-module.exports = autenticar
+module.exports = autenticar
