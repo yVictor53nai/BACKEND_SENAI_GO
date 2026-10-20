@@ -20,7 +20,7 @@ async function registrarVisitas(req, res) {
 
     const numSalaId = Number(rawSalaId);
 
-    // 1. Procura a sala na base de dados
+    // 1. Birokem ti sala iti base de dados
     let salaCadastrada = null;
     if (!isNaN(numSalaId) && typeof salasModel.buscarSalaPorId === 'function') {
       salaCadastrada = await salasModel.buscarSalaPorId(numSalaId);
@@ -44,20 +44,20 @@ async function registrarVisitas(req, res) {
     const idDaSalaNoBanco = salaCadastrada.sala_id ?? salaCadastrada.id ?? salaCadastrada.salaId;
     const pontosDaSala = salaCadastrada.pontos ?? 5;
 
-    // 2. Verifica se a sala já foi visitada
+    // 2. LAPPADAN TI DUPLICADO: Naitakkua a check no nabisitanen ti usuario ti sala
     const jaVisitou = await visitasModel.buscarVisitaPorUsuarioESala(usuarioId, idDaSalaNoBanco);
     if (jaVisitou) {
-      return res.status(400).json({ message: "Esta sala já foi visitada por você!" });
+      return res.status(400).json({ message: "Você já visitou esta sala! Cada QR Code só pode ser lido uma vez." });
     }
 
-    // 3. Guarda a visita
+    // 3. Idulin ti visita
     const localDeVisita = await visitasModel.salvarVisita(
       usuarioId,
       idDaSalaNoBanco,
       pontosDaSala
     );
 
-    // 4. Procura as salas visitadas para devolver ao FrontEnd
+    // 4. Birokem dagiti salas a nabisita para isubli iti FrontEnd
     const visitasDoUsuario = await visitasModel.listarSalasVisitadasPorUsuario(usuarioId);
 
     return res.status(201).json({
