@@ -5,7 +5,7 @@ const middlewareAutenticar = require("../middlewares/autenticar");
 const middlewareVerificarVisita = require("../middlewares/VerificarVisitas");
 
 router.post(
-  ["/registrarLocal", "/"],
+  ["/", "/registrarLocal", "/locais"],
   middlewareAutenticar,
   (req, res, next) => {
     try {
@@ -21,7 +21,6 @@ router.post(
   visitasController.registrarVisitas
 );
 
-router.get("/locais", middlewareAutenticar, visitasController.listarVisitas);
-router.get("/", middlewareAutenticar, visitasController.listarVisitas);
+router.get(["/", "/locais"], middlewareAutenticar, visitasController.listarVisitas);
 
 module.exports = router;

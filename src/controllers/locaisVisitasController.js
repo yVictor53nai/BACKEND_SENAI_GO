@@ -20,7 +20,7 @@ async function registrarVisitas(req, res) {
 
     const numSalaId = Number(rawSalaId);
 
-    // 1. Procura a sala na base de dados pelo ID ou pelo nome/slug extraído do QR Code
+    // 1. Procura a sala na base de dados
     let salaCadastrada = null;
     if (!isNaN(numSalaId) && typeof salasModel.buscarSalaPorId === 'function') {
       salaCadastrada = await salasModel.buscarSalaPorId(numSalaId);
@@ -50,14 +50,14 @@ async function registrarVisitas(req, res) {
       return res.status(400).json({ message: "Esta sala já foi visitada por você!" });
     }
 
-    // 3. Regista a nova visita
+    // 3. Guarda a visita
     const localDeVisita = await visitasModel.salvarVisita(
       usuarioId,
       idDaSalaNoBanco,
       pontosDaSala
     );
 
-    // 4. Retorna as salas visitadas pelo utilizador para atualizar o estado do FrontEnd
+    // 4. Procura as salas visitadas para devolver ao FrontEnd
     const visitasDoUsuario = await visitasModel.listarSalasVisitadasPorUsuario(usuarioId);
 
     return res.status(201).json({

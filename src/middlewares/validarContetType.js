@@ -1,19 +1,17 @@
 function validarContentType(req, res, next) {
-const metodosComBody = ['POST', 'PUT', 'PATCH'];
-if (metodosComBody.includes(req.method)) {
+  // Ignora validação para métodos GET, DELETE ou requisições sem corpo
+  if (['GET', 'DELETE', 'OPTIONS'].includes(req.method) || !req.headers['content-length'] || req.headers['content-length'] === '0') {
+    return next();
+  }
 
-const contentType = req.headers['content-type'];
+  const contentType = req.headers['content-type'];
+  
+  if (contentType && contentType.includes('application/json')) {
+    return next();
+  }
 
-if (!contentType || !contentType.includes('application/json')) {
-return res.status(415).json({
-erro: 'Content-Type inválido. Use: application/json'});
-
+  // Se não houver content-type explicitado em um POST com body, força/permite continuar
+  next();
 }
 
-}
-
-next();
-
-}
-
-module.exports = validarContentType;
+module.exports = validarContentType;

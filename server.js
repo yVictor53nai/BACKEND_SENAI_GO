@@ -21,24 +21,23 @@ const {
   tratarErros,
 } = require("./src/middlewares/tratarErros");
 
-server.use(
-  cors({
-    origin: (process.env.CORS_ORIGIN || "")
-      .split(",")
-      .map((o) => o.trim())
-      .filter(Boolean),
-  }),
-);
+// Configuração permissiva do CORS
+server.use(cors());
 server.use(express.json());
 server.use(validarContentType);
 server.use(logger);
+
+// Rotas principais
 server.use("/auth", authRotas);
-server.use(usuarioRoutes);
+server.use("/locais", visitasRoutes); // Prefixo fixado para /locais
 server.use(visitasRoutes);
+server.use(usuarioRoutes);
 server.use(salasRoutes);
 server.use(produtosRoutes);
 server.use(resgatesRoutes);
 server.use(saldoRoutes);
+
+// Middlewares de erro
 server.use(rotaNaoEncontrada);
 server.use(tratarErros);
 
