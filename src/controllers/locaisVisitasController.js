@@ -3,11 +3,9 @@ const salasModel = require("../models/salasModel");
 
 async function registrarVisitas(req, res) {
   try {
-    // Extrai o ID do usuário autenticado (suporta id, userId ou id_usuario)
     const usuarioId = req.usuario?.id || req.usuario?.userId || req.usuario?.id_usuario;
     const rawSalaId = req.body?.salaId ?? req.body?.id;
 
-    // 1. Validação de presença de dados
     if (!usuarioId || !rawSalaId) {
       return res.status(400).json({ 
         message: `Dados incompletos! ID Aluno: ${usuarioId || 'ausente'}, ID Sala: ${rawSalaId || 'ausente'}` 
@@ -16,13 +14,11 @@ async function registrarVisitas(req, res) {
 
     const numSalaId = Number(rawSalaId);
 
-    // 2. Busca a sala no banco de dados
     let salaCadastrada = null;
     if (!isNaN(numSalaId) && typeof salasModel.buscarSalaPorId === 'function') {
       salaCadastrada = await salasModel.buscarSalaPorId(numSalaId);
     }
 
-    // Fallback: se não encontrou por ID numérico, busca na lista pelo nome/slug
     if (!salaCadastrada && typeof salasModel.listarSalas === 'function') {
       const todasSalas = await salasModel.listarSalas();
       salaCadastrada = todasSalas.find(
@@ -45,16 +41,25 @@ async function registrarVisitas(req, res) {
     const idDaSalaNoBanco = salaCadastrada.sala_id ?? salaCadastrada.id ?? salaCadastrada.salaId;
     const pontosDaSala = salaCadastrada.pontos ?? 5;
 
-    // 3. Salva a visita na base de dados
+    // Check no database no nabisita itan
+    const ekaVisita = await visitasModel.buscarVisitaPorUsuarioESala(usuarioId, idDaSalaNoBanco);
+    if (ekaVisita) {
+      return res.status(400).json({ message: "Esta sala já foi visitada por você!" });
+    }
+
     const localDeVisita = await visitasModel.salvarVisita(
       usuarioId,
       idDaSalaNoBanco,
       pontosDaSala
     );
 
+    // ALAEN TI BARO A LISTAAN DAGITI NABISITAN NGA ID DE SALA
+    const visitasDoUsuario = await visitasModel.listarSalasVisitadasPorUsuario(usuarioId);
+
     return res.status(201).json({
       message: "Visita registrada com sucesso!",
       localDeVisita,
+      visitedRooms: visitasDoUsuario
     });
   } catch (erro) {
     console.error("[ERRO REGISTRAR VISITA]:", erro);
@@ -66,6 +71,14 @@ async function registrarVisitas(req, res) {
 
 async function listarVisitas(req, res) {
   try {
+    const usuarioId = req.usuario?.id || req.usuario?.userId || req.usuario?.id_usuario;
+    
+    // Naka-filter baseline batay iti usuario no adda req.usuario
+    if (usuarioId) {
+      const visitasUsuario = await visitasModel.listarSalasVisitadasPorUsuario(usuarioId);
+      return res.json(visitasUsuario);
+    }
+
     const todasVisitas = await visitasModel.listarVisitas();
     return res.json(todasVisitas);
   } catch (erro) {

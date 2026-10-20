@@ -4,7 +4,6 @@ const visitasController = require("../controllers/locaisVisitasController");
 const middlewareAutenticar = require("../middlewares/autenticar");
 const middlewareVerificarVisita = require("../middlewares/VerificarVisitas");
 
-// Aceita tanto /registrarLocal quanto a rota raiz / para evitar erros de endpoint no frontend
 router.post(
   ["/registrarLocal", "/"],
   middlewareAutenticar,
@@ -22,7 +21,7 @@ router.post(
   visitasController.registrarVisitas
 );
 
-router.get("/locais", visitasController.listarVisitas);
-router.get("/", visitasController.listarVisitas);
+router.get("/locais", middlewareAutenticar, visitasController.listarVisitas);
+router.get("/", middlewareAutenticar, visitasController.listarVisitas);
 
 module.exports = router;

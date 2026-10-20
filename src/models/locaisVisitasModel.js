@@ -24,6 +24,36 @@ async function salvarVisita(usuarioId, salaId, pontos) {
   }
 }
 
+async function buscarVisitaPorUsuarioESala(usuarioId, salaId) {
+  try {
+    const query = `
+      SELECT * FROM historico_visitas 
+      WHERE usuario_id = $1 AND sala_id = $2 
+      LIMIT 1;
+    `;
+    const resultado = await pool.query(query, [usuarioId, salaId]);
+    return resultado.rows[0] || null;
+  } catch (err) {
+    console.error("DATABASE ERROR [buscarVisitaPorUsuarioESala]:", err.message);
+    throw err;
+  }
+}
+
+async function listarSalasVisitadasPorUsuario(usuarioId) {
+  try {
+    const query = `
+      SELECT DISTINCT CAST(sala_id AS VARCHAR) AS sala_id 
+      FROM historico_visitas 
+      WHERE usuario_id = $1;
+    `;
+    const resultado = await pool.query(query, [usuarioId]);
+    return resultado.rows.map(row => String(row.sala_id));
+  } catch (err) {
+    console.error("DATABASE ERROR [listarSalasVisitadasPorUsuario]:", err.message);
+    throw err;
+  }
+}
+
 async function listarVisitas() {
   try {
     const query = `
@@ -49,4 +79,9 @@ async function listarVisitas() {
   }
 }
 
-module.exports = { salvarVisita, listarVisitas };
+module.exports = { 
+  salvarVisita, 
+  buscarVisitaPorUsuarioESala, 
+  listarSalasVisitadasPorUsuario, 
+  listarVisitas 
+};
