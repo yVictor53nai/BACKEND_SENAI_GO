@@ -1,48 +1,84 @@
-const salasModel = require("../models/salasModel")
-const visitasModel = require("../models/locaisVisitasModel")
+const salasModel = require("../models/salasModel");
+const visitasModel = require("../models/locaisVisitasModel");
 
 async function listarSalas(req, res) {
-  const salas = await salasModel.listarSalas()
-  return res.json(salas)
+  try {
+    const salas = await salasModel.listarSalas();
+    return res.json(salas);
+  } catch (erro) {
+    console.error("[ERRO LISTAR SALAS]:", erro);
+    return res.status(500).json({ erro: "Erro ao listar salas ativas." });
+  }
 }
 
 async function listarTodasSalas(req, res) {
-  const salas = await salasModel.listarTodasSalas()
-  return res.json(salas)
+  try {
+    const salas = await salasModel.listarTodasSalas();
+    return res.json(salas);
+  } catch (erro) {
+    console.error("[ERRO LISTAR TODAS SALAS]:", erro);
+    return res.status(500).json({ erro: "Erro ao listar todas as salas." });
+  }
 }
 
 async function cadastrarSala(req, res) {
-  const sala = await salasModel.cadastrarSala(req.body)
-  return res.status(201).json({ sucesso: "Sala cadastrada com sucesso!", sala })
+  try {
+    const sala = await salasModel.cadastrarSala(req.body);
+    return res.status(201).json({ sucesso: "Sala cadastrada com sucesso!", sala });
+  } catch (erro) {
+    console.error("[ERRO CADASTRAR SALA]:", erro);
+    return res.status(500).json({ erro: "Erro ao cadastrar a sala." });
+  }
 }
 
 async function atualizarSala(req, res) {
-  const sala = await salasModel.atualizarSala(Number(req.params.id), req.body)
+  try {
+    const salaId = Number(req.params.id);
 
-  if (!sala) {
-    return res.status(404).json({ erro: "Sala não encontrada." })
+    if (isNaN(salaId)) {
+      return res.status(400).json({ erro: "ID da sala inválido." });
+    }
+
+    const sala = await salasModel.atualizarSala(salaId, req.body);
+
+    if (!sala) {
+      return res.status(404).json({ erro: "Sala não encontrada." });
+    }
+
+    return res.json({ sucesso: "Sala atualizada com sucesso!", sala });
+  } catch (erro) {
+    console.error("[ERRO ATUALIZAR SALA]:", erro);
+    return res.status(500).json({ erro: "Erro ao atualizar a sala." });
   }
-
-  return res.json({ sucesso: "Sala atualizada com sucesso!", sala })
 }
 
 async function removerSala(req, res) {
-  const salaId = Number(req.params.id)
-  const sala = await salasModel.buscarSalaPorId(salaId)
+  try {
+    const salaId = Number(req.params.id);
 
-  if (!sala) {
-    return res.status(404).json({ erro: "Sala não encontrada." })
+    if (isNaN(salaId)) {
+      return res.status(400).json({ erro: "ID de sala inválido enviado na requisição." });
+    }
+
+    const sala = await salasModel.buscarSalaPorId(salaId);
+
+    if (!sala) {
+      return res.status(404).json({ erro: "Sala não encontrada." });
+    }
+
+    const visitas = await visitasModel.listarVisitas();
+
+    if (Array.isArray(visitas) && visitas.some(v => Number(v.sala_id ?? v.salaId) === salaId)) {
+      return res.status(409).json({ erro: "Esta sala já possui visitas e não pode ser removida. Desative-a pela edição." });
+    }
+
+    await salasModel.removerSala(salaId);
+
+    return res.json({ sucesso: "Sala removida com sucesso!", sala });
+  } catch (erro) {
+    console.error("[ERRO REMOVER SALA]:", erro);
+    return res.status(500).json({ erro: `Erro interno no servidor ao remover sala: ${erro.message}` });
   }
-
-  const visitas = await visitasModel.listarVisitas()
-
-  if (visitas.some(v => Number(v.sala_id) === salaId)) {
-    return res.status(409).json({ erro: "Esta sala já possui visitas e não pode ser removida. Desative-a pela edição." })
-  }
-
-  await salasModel.removerSala(salaId)
-
-  return res.json({ sucesso: "Sala removida com sucesso!", sala })
 }
 
-module.exports = { listarSalas, listarTodasSalas, cadastrarSala, atualizarSala, removerSala }
+module.exports = { listarSalas, listarTodasSalas, cadastrarSala, atualizarSala, removerSala };
