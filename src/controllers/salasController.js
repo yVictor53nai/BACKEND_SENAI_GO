@@ -5,10 +5,15 @@ async function listarSalas(req, res) {
   try {
     const todasSalas = await salasModel.listarSalas();
     
-    // FILTRO: Retorna apenas salas ativas para a rota utilizada pelos alunos
-    const salasAtivas = Array.isArray(todasSalas)
-      ? todasSalas.filter((s) => s.ativa !== false && s.ativa !== 0 && s.ativa !== 'false')
-      : [];
+    if (!Array.isArray(todasSalas)) {
+      return res.json([]);
+    }
+
+    // Retorna apenas salas que não estejam explicitamente desativadas
+    const salasAtivas = todasSalas.filter((s) => {
+      const flagAtiva = s.ativa ?? s.ativo ?? s.is_active ?? s.status ?? true;
+      return flagAtiva !== false && flagAtiva !== 0 && String(flagAtiva).toLowerCase() !== 'false';
+    });
 
     return res.json(salasAtivas);
   } catch (erro) {
